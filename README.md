@@ -1,10 +1,10 @@
 # OSM2RN
 
-A simple Python code to extract road network from OpenStreetMap (OSM). 
+A simple Python code to extract road network (in Shapefile) from [OpenStreetMap (OSM)](https://www.openstreetmap.org/). 
 
 It serves as a fundamental data for trajectory map matching and other usages.
 
-The generated road network are used for [TPTK](https://github.com/sjruan/TPTK) and [DeepMG](https://github.com/sjruan/DeepMG).
+The generated road network is used for [TPTK](https://github.com/sjruan/TPTK) and [DeepMG](https://github.com/sjruan/DeepMG).
 
 ## Usage
 
