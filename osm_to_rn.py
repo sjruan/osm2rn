@@ -10,36 +10,42 @@ class OSM2RNHandler(o.SimpleHandler):
         super(OSM2RNHandler, self).__init__()
         self.candi_highway_types = {'motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'unclassified',
                                     'residential', 'motorway_link', 'trunk_link', 'primary_link', 'secondary_link',
-                                    'tertiary_link'}
+                                    'tertiary_link', 'living_street', 'service', 'road'}
         self.rn = rn
         self.eid = 0
 
     def way(self, w):
         if 'highway' in w.tags and w.tags['highway'] in self.candi_highway_types:
             raw_eid = w.id
-            coords = []
+            full_coords = []
             for n in w.nodes:
-                coords.append((n.lat, n.lon))
+                full_coords.append((n.lat, n.lon))
             if 'oneway' in w.tags:
                 if w.tags['oneway'] != 'yes':
-                    coords.reverse()
-                edge_attr = {'eid': self.eid, 'coords': coords, 'raw_eid': raw_eid, 'highway': w.tags['highway']}
-                rn.add_edge((coords[0][1], coords[0][0]),
-                            (coords[-1][1], coords[-1][0]), **edge_attr)
-                self.eid += 1
+                    full_coords.reverse()
+                for i in range(len(full_coords) - 1):
+                    coords = [full_coords[i], full_coords[i + 1]]
+                    edge_attr = {'eid': self.eid, 'coords': coords, 'raw_eid': raw_eid, 'highway': w.tags['highway']}
+                    rn.add_edge((coords[0][1], coords[0][0]),
+                                (coords[-1][1], coords[-1][0]), **edge_attr)
+                    self.eid += 1
             else:
-                # add edges for both directions
-                edge_attr = {'eid': self.eid, 'coords': coords, 'raw_eid': raw_eid, 'highway': w.tags['highway']}
-                rn.add_edge((coords[0][1], coords[0][0]),
-                            (coords[-1][1], coords[-1][0]), **edge_attr)
-                self.eid += 1
+                for i in range(len(full_coords) - 1):
+                    coords = [full_coords[i], full_coords[i + 1]]
+                    # add edges for both directions
+                    edge_attr = {'eid': self.eid, 'coords': coords, 'raw_eid': raw_eid, 'highway': w.tags['highway']}
+                    rn.add_edge((coords[0][1], coords[0][0]),
+                                (coords[-1][1], coords[-1][0]), **edge_attr)
+                    self.eid += 1
 
-                reversed_coords = coords.copy()
-                reversed_coords.reverse()
-                edge_attr = {'eid': self.eid, 'coords': reversed_coords, 'raw_eid': raw_eid, 'highway': w.tags['highway']}
-                rn.add_edge((reversed_coords[0][1], reversed_coords[0][0]),
-                            (reversed_coords[-1][1], reversed_coords[-1][0]), **edge_attr)
-                self.eid += 1
+                reversed_full_coords = full_coords.copy()
+                reversed_full_coords.reverse()
+                for i in range(len(reversed_full_coords) - 1):
+                    reversed_coords = [full_coords[i], full_coords[i + 1]]
+                    edge_attr = {'eid': self.eid, 'coords': reversed_coords, 'raw_eid': raw_eid, 'highway': w.tags['highway']}
+                    rn.add_edge((reversed_coords[0][1], reversed_coords[0][0]),
+                                (reversed_coords[-1][1], reversed_coords[-1][0]), **edge_attr)
+                    self.eid += 1
 
 
 def store_shp(rn, target_path):
