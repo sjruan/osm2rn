@@ -21,7 +21,7 @@ class OSM2RNHandler(o.SimpleHandler):
             raw_eid = w.id
             full_coords = []
             for n in w.nodes:
-                full_coords.append((n.lat, n.lon))
+                full_coords.append((n.lon, n.lat))
             # direction: 0-forward, 1-backward, 2-bi-directional
             if 'oneway' in w.tags:
                 if w.tags['oneway'] != 'yes':
@@ -30,12 +30,11 @@ class OSM2RNHandler(o.SimpleHandler):
                     dir = 0
             else:
                 dir = 2
-            for i in range(len(full_coords) - 1):
+            for i in range(len(full_coords)-1):
                 coords = [full_coords[i], full_coords[i+1]]
                 edge_attr = {'eid': self.eid, 'coords': coords, 'raw_eid': raw_eid, 'highway': w.tags['highway'],
                              'dir': dir}
-                self.rn.add_edge((coords[0][1], coords[0][0]),
-                                 (coords[-1][1], coords[-1][0]), **edge_attr)
+                self.rn.add_edge(coords[0], coords[-1], **edge_attr)
                 self.eid += 1
 
 
@@ -71,8 +70,11 @@ def get_all_road_segments(int_node, g):
     all_road_segments = []
     for u, v in g.edges(int_node):
         first_adj_node = u if u != int_node else v
-        road_segment = construct_road_segment(first_adj_node, g, [int_node, first_adj_node])
-        all_road_segments.append(road_segment)
+        # make sure a road would not be inserted for twice, this is achieved by only adding direction match edges
+        if g[int_node][first_adj_node]['coords'][0] == int_node and \
+                g[int_node][first_adj_node]['coords'][-1] == first_adj_node:
+            road_segment = construct_road_segment(first_adj_node, g, [int_node, first_adj_node])
+            all_road_segments.append(road_segment)
     return all_road_segments
 
 
@@ -104,10 +106,9 @@ def add_new_edge(nodes, start_idx, end_idx, g):
             g.remove_edge(nodes[i], nodes[i+1])
     coords = []
     for pt_arr in nodes[start_idx:end_idx+1]:
-        coords.append((pt_arr[1], pt_arr[0]))
+        coords.append((pt_arr[0], pt_arr[1]))
     g.add_edge(start_node, end_node, eid=first_edge['eid'], highway=first_edge['highway'],
-               raw_eid=first_edge['raw_eid'], dir=first_edge['dir'],
-               coords=coords)
+               raw_eid=first_edge['raw_eid'], dir=first_edge['dir'], coords=coords)
 
 
 def to_std_rn(compressed_rn):
@@ -119,28 +120,24 @@ def to_std_rn(compressed_rn):
             coords = data['coords']
             edge_attr = {'eid': data['eid'], 'coords': data['coords'], 'raw_eid': data['raw_eid'],
                          'highway': data['highway']}
-            std_rn.add_edge((coords[0][1], coords[0][0]),
-                            (coords[-1][1], coords[-1][0]), **edge_attr)
+            std_rn.add_edge(coords[0], coords[-1], **edge_attr)
         elif data['dir'] == 1:
             reversed_coords = data['coords'].copy()
             reversed_coords.reverse()
             edge_attr = {'eid': data['eid'], 'coords': reversed_coords, 'raw_eid': data['raw_eid'],
                          'highway': data['highway']}
-            std_rn.add_edge((reversed_coords[0][1], reversed_coords[0][0]),
-                            (reversed_coords[-1][1], reversed_coords[-1][0]), **edge_attr)
+            std_rn.add_edge(reversed_coords[0], reversed_coords[-1], **edge_attr)
         else:
             coords = data['coords']
             edge_attr = {'eid': data['eid'], 'coords': data['coords'], 'raw_eid': data['raw_eid'],
                          'highway': data['highway']}
-            std_rn.add_edge((coords[0][1], coords[0][0]),
-                            (coords[-1][1], coords[-1][0]), **edge_attr)
+            std_rn.add_edge(coords[0], coords[-1], **edge_attr)
 
             reversed_coords = data['coords'].copy()
             reversed_coords.reverse()
             edge_attr = {'eid': avail_eid, 'coords': reversed_coords, 'raw_eid': data['raw_eid'],
                          'highway': data['highway']}
-            std_rn.add_edge((reversed_coords[0][1], reversed_coords[0][0]),
-                            (reversed_coords[-1][1], reversed_coords[-1][0]), **edge_attr)
+            std_rn.add_edge(reversed_coords[0], reversed_coords[-1], **edge_attr)
             avail_eid += 1
     return std_rn
 
